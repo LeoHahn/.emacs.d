@@ -58,7 +58,7 @@
 (general-create-definer leader-jump-definer
   :prefix "SPC j")
 
-(general-create-definer leader-comment-definer
+(general-create-definer leader-compile-comments-definer
   :prefix "SPC c")
 
 (general-create-definer leader-errors-definer
@@ -94,7 +94,7 @@
  "TAB" 'indent-for-tab-command)
 
 ;;------------------------------------------
-;; Better searching with Ivy
+;; Better searching with Helm and FZF
 ;;------------------------------------------
 (use-package helm
   :ensure t
@@ -132,13 +132,26 @@
                     `(,(rx bos "*helm" (* not-newline) "*" eos)
                          (display-buffer-in-side-window)
                          (inhibit-same-window . t)
-                         (window-height . 0.4)))
-  )
+                         (window-height . 0.4))))
 
+(use-package fzf
+  :ensure t
+  :init
+  (leader-definer
+    :states 'motion
+    "s" 'fzf))
 
 ;;------------------------------------------
 ;; Project management with Projectile
 ;;------------------------------------------
+(defun lh/close-compilation-window ()
+  "Close the window containing the '*compilation*' buffer."
+  (interactive)
+  (when compilation-last-buffer
+    (delete-windows-on compilation-last-buffer)))
+
+(setq compilation-scroll-output t)
+
 (use-package projectile
   :ensure t
   :init
@@ -146,9 +159,11 @@
   (leader-project-definer
    :states 'motion
    "c" 'projectile-compile-project
-   "r" 'projectile-run-project)
+   "r" 'projectile-run-project
+   "C" 'projectile-test-project)
   :config
-  (setq projectile-project-compilation-cmd "cmake --build build"))
+  (setq projectile-project-compilation-cmd "cmake --build build")
+  (setq projectile-enable-caching t))
 
 ;; searching with deadgrep (ripgrep)
 (use-package deadgrep
@@ -165,6 +180,10 @@
     :states 'motion
     "f" 'helm-projectile-find-file
     "/" 'helm-projectile-rg))
+
+(leader-compile-comments-definer
+ :states 'motion
+ "d" 'lh/close-compilation-window)
   
 ;;------------------------------------------
 ;; Git integration with Magit
@@ -206,6 +225,14 @@
   "TAB" 'mode-line-other-buffer)
 
 ;;------------------------------------------
+;; Autocompletion with Company mode
+;;------------------------------------------
+(use-package company
+  :ensure t
+  :config
+  (global-company-mode))
+
+;;------------------------------------------
 ;; Flycheck
 ;;------------------------------------------
 (use-package flycheck
@@ -215,9 +242,9 @@
    :states 'motion
    "n" 'flycheck-next-error
    "N" 'flycheck-previous-error)
-  :config
   (setq-default flycheck-disabled-checkers '(c/c++-clang c/c++-cppcheck c/c++-gcc)))
 
+;; (setq-default flycheck-disabled-checkers '(c/c++-clang c/c++-cppcheck c/c++-gcc))
 ;;------------------------------------------
 ;; Language Server Protocol
 ;;------------------------------------------
@@ -225,22 +252,45 @@
   :ensure t 
   :commands lsp
   :config
-  (setq lsp-prefer-flymake nil))
+  (setq lsp-prefer-flymake nil)
+  )
 (use-package lsp-ui
   :ensure t
   :commands lsp-ui-mode
   :config
   (setq lsp-ui-sideline-enable nil))
 
+(use-package company
+  :diminish ""
+  :bind (:map company-active-map
+              ("C-j" . company-select-next)
+              ("<backtab>" . company-complete-common-or-cycle)
+              ("C-k" . company-select-previous))
+  :custom
+  (company-idle-delay 0.3)
+  :config
+  (global-company-mode))
+
 (use-package company-lsp
   :ensure t
-  :commands company-lsp)
+  :commands company-lsp
+  :config
+  (push 'company-lsp company-backends)
+  (setq company-transformers nil company-lsp-async t))
 
 (leader-jump-definer
   :states 'normal
   :keymaps 'lsp-ui-mode-map
   "d" 'lsp-ui-peek-find-definitions
   "r" 'lsp-ui-peek-find-references)
+
+;;------------------------------------------
+;; YaSnippet
+;;------------------------------------------
+(use-package yasnippet
+  :ensure t
+  :init
+  (yas-global-mode 1))
 
 ;;------------------------------------------
 ;; Config files
@@ -259,7 +309,7 @@
 (use-package evil-nerd-commenter
   :ensure t
   :init
-  (leader-comment-definer
+  (leader-compile-comments-definer
     :states '(normal visual)
     "l" 'evilnc-comment-or-uncomment-lines))
 
@@ -267,9 +317,29 @@
 (setq tab-width 4)
 
 ;;------------------------------------------
+;; Treemacs
+;;------------------------------------------
+(use-package treemacs
+  :ensure t
+  :init
+  (leader-files-definer
+    :states 'motion
+    "t" 'treemacs))
+
+(use-package treemacs-projectile
+  :ensure t
+  :init
+  (leader-project-definer
+    :states 'motion
+    "t" 'treemacs-projectile))
+
+(use-package treemacs-evil :ensure t)
+
+;;------------------------------------------
 ;; C++/C
 ;;------------------------------------------
 (use-package ccls
+  :defer t
   :ensure t
   :hook ((c-mode c++-mode objc-mode) .
          (lambda () (require 'ccls) (lsp)))
@@ -295,12 +365,15 @@
 ;;------------------------------------------
 ;; Load default theme
 ;;------------------------------------------
-;; (use-package cyberpunk-theme :ensure t)
-;; (use-package tao-theme :ensure t)
-;; (use-package soothe-theme :ensure t)
-;; (use-package darkburn-theme :ensure t)
+;; (use-package apropospriate-theme :ensure t)
+(use-package grayscale-theme :ensure t)
+(load-theme 'grayscale t)
+;; (use-package base16-theme
+;;   :ensure t
+;;   :config
+;;   (load-theme 'base16-grayscale-dark t))
 
-(load-theme 'minimal t)
+;; (load-theme 'minimal t)
 ;;(load-theme 'grayscale t)
 ;; (load-theme 'darkburn t)
 ;; (load-theme 'apropospriate-dark t)
@@ -320,20 +393,21 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(company-idle-delay 0.3 t)
  '(custom-safe-themes
    (quote
     ("8572fed7a217affc4d91c12a808a5228b0858113602dd2e577e0bbd3a4994034" default)))
- '(package-selected-packages (quote (evil use-package)))
+ '(package-selected-packages (quote (base16-theme evil use-package)))
  '(safe-local-variable-values
    (quote
-    ((projectile-project-compilation-cmd . "cmake --build cpp-lib/build")
+    ((projectile-project-test-cmd . "cd cpp-lib/build && ./tests")
+     (projectile-project-compilation-cmd . "cmake --build cpp-lib/build")
      (projectile-project-run-cmd . "cd cpp-lib/build && ./main")
      (projectile-project-compilation-cmd . "cmake --build cpplib/build")
      (projectile-project-run-cmd . "cd cpplib/build && ./main")
      (projectile-project-run-cmd . "cd build && ./main")
      (projectile-project-compilation-cmd . "cmake --build build")
-     (projectile-project-run-cmd . "cd build && ./blocks"))))
- )
+     (projectile-project-run-cmd . "cd build && ./blocks")))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
