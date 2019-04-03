@@ -14,9 +14,16 @@
   :init
   (evil-mode 1))
 
+;;------------------------------------------
+;; Special evil keybindings
+;;------------------------------------------
 (use-package evil-collection
+  :after (evil helm)
   :ensure t
+  :init
+  ;(setq evil-collection-setup-minibuffer t)
   :config
+  ;(setq evil-collection-setup-minibuffer t)
   (evil-collection-init))
 
 ;;------------------------------------------
@@ -25,8 +32,7 @@
 (use-package general
   :ensure t
   :init
-  (general-def :states '(normal motion emacs) "SPC" nil)
-  )
+  (general-def :states '(normal motion emacs) "SPC" nil))
 
 (general-create-definer leader-definer
   :prefix "SPC")
@@ -87,31 +93,38 @@
 ;;------------------------------------------
 ;; Better searching with Ivy
 ;;------------------------------------------
-(use-package ivy
+(use-package helm
   :ensure t
   :init
-  (ivy-mode 1)
-  (global-set-key "\C-s" 'swiper)
-  (general-define-key
-   :keymaps 'ivy-minibuffer-map
-   "C-j" 'ivy-next-line
-   "C-k" 'ivy-previous-line
-   "C-h" (kbd "DEL")))
-
-(use-package counsel
-  :ensure t
-  :init
-  (counsel-mode 1)
+  (helm-mode 1)
+  (use-package helm-files)
+  ;; (general-define-key
+  ;;  :states '(insert normal)
+  ;;  :keymaps 'helm-map
+  ;;  "C-j" 'helm-next-line
+  ;;  "C-k" 'helm-previous-line)
   (leader-definer
     :states 'motion
-    "SPC" 'counsel-M-x)
+    "SPC" 'helm-M-x)
   (leader-files-definer
     :states 'motion
-    "g" 'counsel-ag
-    "r" 'counsel-recentf
-    "s" 'save-buffer
-    "f" 'counsel-find-file)
-  (global-set-key (kbd "M-x") 'counsel-M-x))
+    "g" 'helm-ag
+    "r" 'helm-recentf
+    "f" 'helm-find-files
+    "s" 'save-buffer)
+  (global-set-key (kbd "M-x") 'helm-M-x)
+  (define-key helm-map (kbd "C-j") 'helm-next-line)
+  (define-key helm-map (kbd "C-k") 'helm-previous-line)
+  (define-key helm-map (kbd "C-h") 'helm-next-source)
+  (define-key helm-map (kbd "C-S-h") 'describe-key)
+  (define-key helm-map (kbd "C-l") (kbd "RET"))
+  (define-key helm-map [escape] 'helm-keyboard-quit)
+  (dolist (keymap (list helm-find-files-map helm-read-file-map))
+    (define-key keymap (kbd "C-l") 'helm-execute-persistent-action)
+    (define-key keymap (kbd "C-h") 'helm-find-files-up-one-level)
+    (define-key keymap (kbd "C-S-h") 'describe-key))
+  )
+
 
 ;;------------------------------------------
 ;; Project management with Projectile
@@ -122,7 +135,6 @@
   (projectile-mode 1)
   (leader-project-definer
    :states 'motion
-   "f" 'projectile-find-file
    "c" 'projectile-compile-project
    "r" 'projectile-run-project)
   :config
@@ -136,6 +148,14 @@
     :states 'motion
     "/" 'deadgrep))
 
+(use-package helm-projectile
+  :ensure t
+  :init
+  (leader-project-definer
+    :states 'motion
+    "f" 'helm-projectile-find-file
+    "/" 'helm-projectile-rg))
+  
 ;;------------------------------------------
 ;; Git integration with Magit
 ;;------------------------------------------
@@ -167,7 +187,7 @@
 ;;------------------------------------------
 (leader-buffer-definer
   :states 'motion
-  "b" 'switch-to-buffer
+  "b" 'helm-buffers-list
   "d" 'kill-this-buffer)
 
 ;; jump to the last buffer
@@ -260,8 +280,10 @@
 (use-package soothe-theme :ensure t)
 (use-package darkburn-theme :ensure t)
 
-;(load-theme 'minimal t)
+;; (load-theme 'minimal t)
+;;(load-theme 'grayscale t)
 (load-theme 'darkburn t)
+;; (load-theme 'apropospriate-dark t)
 
 ;; Set default font
 (set-face-attribute 'default nil
