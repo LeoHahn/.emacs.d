@@ -61,6 +61,9 @@
 (general-create-definer leader-comment-definer
   :prefix "SPC c")
 
+(general-create-definer leader-errors-definer
+  :prefix "SPC e")
+
 ;;------------------------------------------
 ;; Read PATH from shell
 ;;------------------------------------------
@@ -109,7 +112,7 @@
   (leader-files-definer
     :states 'motion
     "g" 'helm-ag
-    "r" 'helm-recentf
+    "r" 'helm-mini
     "f" 'helm-find-files
     "s" 'save-buffer)
   (global-set-key (kbd "M-x") 'helm-M-x)
@@ -123,6 +126,13 @@
     (define-key keymap (kbd "C-l") 'helm-execute-persistent-action)
     (define-key keymap (kbd "C-h") 'helm-find-files-up-one-level)
     (define-key keymap (kbd "C-S-h") 'describe-key))
+
+  :config
+  (add-to-list 'display-buffer-alist
+                    `(,(rx bos "*helm" (* not-newline) "*" eos)
+                         (display-buffer-in-side-window)
+                         (inhibit-same-window . t)
+                         (window-height . 0.4)))
   )
 
 
@@ -200,6 +210,11 @@
 ;;------------------------------------------
 (use-package flycheck
   :ensure t
+  :init
+  (leader-errors-definer
+   :states 'motion
+   "n" 'flycheck-next-error
+   "N" 'flycheck-previous-error)
   :config
   (setq-default flycheck-disabled-checkers '(c/c++-clang c/c++-cppcheck c/c++-gcc)))
 
@@ -217,7 +232,9 @@
   :config
   (setq lsp-ui-sideline-enable nil))
 
-(use-package company-lsp :ensure t :commands company-lsp)
+(use-package company-lsp
+  :ensure t
+  :commands company-lsp)
 
 (leader-jump-definer
   :states 'normal
@@ -245,6 +262,9 @@
   (leader-comment-definer
     :states '(normal visual)
     "l" 'evilnc-comment-or-uncomment-lines))
+
+(electric-pair-mode 1)
+(setq tab-width 4)
 
 ;;------------------------------------------
 ;; C++/C
@@ -275,14 +295,14 @@
 ;;------------------------------------------
 ;; Load default theme
 ;;------------------------------------------
-(use-package cyberpunk-theme :ensure t)
-(use-package tao-theme :ensure t)
-(use-package soothe-theme :ensure t)
-(use-package darkburn-theme :ensure t)
+;; (use-package cyberpunk-theme :ensure t)
+;; (use-package tao-theme :ensure t)
+;; (use-package soothe-theme :ensure t)
+;; (use-package darkburn-theme :ensure t)
 
-;; (load-theme 'minimal t)
+(load-theme 'minimal t)
 ;;(load-theme 'grayscale t)
-(load-theme 'darkburn t)
+;; (load-theme 'darkburn t)
 ;; (load-theme 'apropospriate-dark t)
 
 ;; Set default font
@@ -291,9 +311,6 @@
                     :height 130
                     :weight 'normal
                     :width 'normal)
-
-;; FIREPLACE
-(use-package fireplace :ensure t)
 
 ;;-------------------------------------------
 ;; Custom variables (DO NOT EDIT)
@@ -306,10 +323,7 @@
  '(custom-safe-themes
    (quote
     ("8572fed7a217affc4d91c12a808a5228b0858113602dd2e577e0bbd3a4994034" default)))
- '(nrepl-message-colors
-   (quote
-    ("#CC9393" "#DFAF8F" "#F0DFAF" "#7F9F7F" "#BFEBBF" "#93E0E3" "#94BFF3" "#DC8CC3")))
- '(package-selected-packages (quote (doom-modeline evil use-package)))
+ '(package-selected-packages (quote (evil use-package)))
  '(safe-local-variable-values
    (quote
     ((projectile-project-compilation-cmd . "cmake --build cpp-lib/build")
@@ -319,28 +333,7 @@
      (projectile-project-run-cmd . "cd build && ./main")
      (projectile-project-compilation-cmd . "cmake --build build")
      (projectile-project-run-cmd . "cd build && ./blocks"))))
- '(vc-annotate-background "#2B2B2B")
- '(vc-annotate-color-map
-   (quote
-    ((20 . "#BC8383")
-     (40 . "#CC9393")
-     (60 . "#DFAF8F")
-     (80 . "#D0BF8F")
-     (100 . "#E0CF9F")
-     (120 . "#F0DFAF")
-     (140 . "#5F7F5F")
-     (160 . "#7F9F7F")
-     (180 . "#8FB28F")
-     (200 . "#9FC59F")
-     (220 . "#AFD8AF")
-     (240 . "#BFEBBF")
-     (260 . "#93E0E3")
-     (280 . "#6CA0A3")
-     (300 . "#7CB8BB")
-     (320 . "#8CD0D3")
-     (340 . "#94BFF3")
-     (360 . "#DC8CC3"))))
- '(vc-annotate-very-old-color "#DC8CC3"))
+ )
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
