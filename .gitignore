@@ -1,2 +1,8 @@
 elpa
 recentf
+projectile.cache
+.cache
+projectile-bookmarks.eld
+transient
+evil
+.lsp-session-v1
