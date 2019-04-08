@@ -81,13 +81,20 @@
   :config
   (setq ring-bell-function 'ignore))
 
-(use-package smooth-scrolling
-  :ensure t
-  :init
-  (smooth-scrolling-mode 1))
+;; better scrolling
+(setq redisplay-dont-pause t
+      scroll-margin 5
+      scroll-step 1
+      scroll-conservatively 10
+      scroll-preserve-screen-position 1)
+(setq-default scroll-up-aggressively 0.01
+              scroll-down-aggressively 0.01)
 
 (recentf-mode 1)
 (setq inhibit-startup-screen t)
+
+;; Change questions of 'yes/no' to 'y/n'
+(fset 'yes-or-no-p 'y-or-n-p)
 
 (general-define-key
  :states '(normal visual)
@@ -99,6 +106,7 @@
 (use-package helm
   :ensure t
   :init
+  (require 'helm-config)
   (helm-mode 1)
   (use-package helm-files)
   ;; (general-define-key
@@ -150,7 +158,9 @@
   (when compilation-last-buffer
     (delete-windows-on compilation-last-buffer)))
 
-(setq compilation-scroll-output t)
+;; make so that emacs always follows the compilation buffer
+;; and stops at the first error if there is one.
+(setq compilation-scroll-output 'first-error)
 
 (use-package projectile
   :ensure t
@@ -179,7 +189,8 @@
   (leader-project-definer
     :states 'motion
     "f" 'helm-projectile-find-file
-    "/" 'helm-projectile-rg))
+    "/" 'helm-projectile-rg
+    "a" 'helm-projectile-find-other-file))
 
 (leader-compile-comments-definer
  :states 'motion
@@ -197,6 +208,40 @@
 
 (use-package evil-magit :ensure t)
 
+;; Fix issue of reverting buffers
+(defun _revert-all-buffers (buffer-predicate)
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (and (buffer-file-name) (funcall buffer-predicate buf))
+        (condition-case e
+            (revert-buffer t t t)
+          (error
+           (message "%s" e))))))
+  (message "Refreshed open files."))
+
+(defun revert-all-unmodified-buffers-in-git-repo ()
+  "Refreshes all open modified buffers in current buffer's Git repo
+ from their files."
+  (interactive)
+  (_revert-all-buffers (lambda (b)
+                         (and (not (buffer-modified-p b))
+                              (magit-auto-revert-repository-buffer-p b)))))
+
+(with-eval-after-load 'magit-autorevert
+  (magit-auto-revert-mode 0)
+  (defalias 'magit-auto-revert-buffers
+    'revert-all-unmodified-buffers-in-git-repo))
+
+;;------------------------------------------
+;; Configure windows with Shackle
+;;------------------------------------------
+(use-package shackle
+  :ensure t
+  :config
+  (progn (shackle-mode t)
+         (setq shackle-rules '((compilation-mode :align 'bottom :size 0.4))
+               shackle-default-rule '(:select t))))
+
 ;;------------------------------------------
 ;; Window management
 ;;------------------------------------------
@@ -206,7 +251,7 @@
   "-" 'split-window-below
   "l" 'evil-window-right
   "h" 'evil-window-left
-  "j" 'evil-window-bottom
+  "j" 'evil-window-down
   "k" 'evil-window-up
   "d" 'evil-window-delete
   "m" 'delete-other-windows)
@@ -214,10 +259,20 @@
 ;;------------------------------------------
 ;; Buffers management
 ;;------------------------------------------
+(defun lh/kill-this-buffer (&optional arg)
+  "Kill the current buffer.
+If the universal prefix argument is used then kill also the window."
+  (interactive "P")
+  (if (window-minibuffer-p)
+      (abort-recursive-edit)
+    (if (equal '(4) arg)
+        (kill-buffer-and-window)
+      (kill-buffer))))
+
 (leader-buffer-definer
   :states 'motion
   "b" 'helm-buffers-list
-  "d" 'kill-this-buffer)
+  "d" 'lh/kill-this-buffer)
 
 ;; jump to the last buffer
 (leader-definer
@@ -228,9 +283,23 @@
 ;; Autocompletion with Company mode
 ;;------------------------------------------
 (use-package company
-  :ensure t
+  :diminish ""
+  :bind (:map company-active-map
+              ("C-j" . company-select-next)
+              ("<backtab>" . company-complete-common-or-cycle)
+              ("C-k" . company-select-previous))
+  :custom
+  (company-idle-delay 0.3)
   :config
   (global-company-mode))
+
+;;------------------------------------------
+;; Snippets
+;;------------------------------------------
+(use-package yasnippet
+  :ensure t
+  :init
+  (yas-global-mode 1))
 
 ;;------------------------------------------
 ;; Flycheck
@@ -244,32 +313,24 @@
    "N" 'flycheck-previous-error)
   (setq-default flycheck-disabled-checkers '(c/c++-clang c/c++-cppcheck c/c++-gcc)))
 
-;; (setq-default flycheck-disabled-checkers '(c/c++-clang c/c++-cppcheck c/c++-gcc))
 ;;------------------------------------------
 ;; Language Server Protocol
 ;;------------------------------------------
 (use-package lsp-mode
   :ensure t 
   :commands lsp
+  :init
+  (leader-files-definer
+    :states 'normal
+    "F" 'lsp-format-buffer)
   :config
-  (setq lsp-prefer-flymake nil)
-  )
+  (setq lsp-prefer-flymake nil))
+
 (use-package lsp-ui
   :ensure t
   :commands lsp-ui-mode
   :config
   (setq lsp-ui-sideline-enable nil))
-
-(use-package company
-  :diminish ""
-  :bind (:map company-active-map
-              ("C-j" . company-select-next)
-              ("<backtab>" . company-complete-common-or-cycle)
-              ("C-k" . company-select-previous))
-  :custom
-  (company-idle-delay 0.3)
-  :config
-  (global-company-mode))
 
 (use-package company-lsp
   :ensure t
@@ -283,14 +344,6 @@
   :keymaps 'lsp-ui-mode-map
   "d" 'lsp-ui-peek-find-definitions
   "r" 'lsp-ui-peek-find-references)
-
-;;------------------------------------------
-;; YaSnippet
-;;------------------------------------------
-(use-package yasnippet
-  :ensure t
-  :init
-  (yas-global-mode 1))
 
 ;;------------------------------------------
 ;; Config files
@@ -315,6 +368,12 @@
 
 (electric-pair-mode 1)
 (setq tab-width 4)
+
+;; Use a TODO highlighter
+(use-package hl-todo
+  :ensure t
+  :init
+  (global-hl-todo-mode))
 
 ;;------------------------------------------
 ;; Treemacs
@@ -348,6 +407,40 @@
 
 (use-package cmake-mode :ensure t)
 
+(use-package glsl-mode :ensure t)
+
+;; (defun my-c-mode-common-hook ()
+;;  ;; my customizations for all of c-mode, c++-mode, objc-mode, java-mode
+;;  (c-set-offset 'substatement-open 0)
+;;  ;; other customizations can go here
+
+;;  (setq c++-tab-always-indent t
+;;        c-basic-offset 4
+;;        c-indent-level 4
+;;        tab-stop-list '(4 8 12 16 20 24 28 32 36 40 44 48 52 56 60)
+;;        tab-width 4
+;;        indent-tabs-mode nil  ; use spaces only if nil
+;;        )
+;;  )
+
+(c-add-style "work"
+             '("stroustrup"
+               (c-basic-offset . 4)
+               (c-indent-level . 4)
+               (tab-width . 4)
+               (indent-tabs-mode . nil)
+               (c-offsets-alist . ((substatement-open . 0)
+                                   (case-label . 0)
+                                   (brace-list-open . 0)
+                                   (innamespace . 0)
+                                   (inline-open . 0)
+                                   (substatement-open . 0)
+                                   (inlambda . 0) ; no extra indent for lambda
+                                   (block-open . 0) ; no space before {
+                                   (knr-argdecl-intro . -)))))
+
+(setq c-default-style "work")
+
 ;;------------------------------------------
 ;; Modeline
 ;;------------------------------------------
@@ -366,8 +459,9 @@
 ;; Load default theme
 ;;------------------------------------------
 ;; (use-package apropospriate-theme :ensure t)
-(use-package grayscale-theme :ensure t)
-(load-theme 'grayscale t)
+;; (use-package grayscale-theme :ensure t)
+(use-package zenburn-theme :ensure t)
+(load-theme 'zenburn t)
 ;; (use-package base16-theme
 ;;   :ensure t
 ;;   :config
@@ -380,10 +474,12 @@
 
 ;; Set default font
 (set-face-attribute 'default nil
-                    :family "IBM Plex Mono"
+                    :family "Iosevka"
                     :height 130
                     :weight 'normal
                     :width 'normal)
+
+(set-cursor-color "IndianRed")
 
 ;;-------------------------------------------
 ;; Custom variables (DO NOT EDIT)
