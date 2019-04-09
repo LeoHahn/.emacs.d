@@ -233,28 +233,29 @@
     'revert-all-unmodified-buffers-in-git-repo))
 
 ;;------------------------------------------
+;; Markdown support
+;;------------------------------------------
+(use-package markdown-mode
+  :ensure t
+  :commands (markdown-mode gfm-mode)
+  :mode (("README\\.md\\'" . gfm-mode)
+         ("CHANGELOG\\.md\\'" . gfm-mode)
+         ("\\.md\\'" . markdown-mode)
+         ("\\.markdown\\'" . markdown-mode))
+  :init (setq markdown-command "marked"))
+
+;;------------------------------------------
 ;; Configure windows with Shackle
 ;;------------------------------------------
+(setq helm-display-function 'pop-to-buffer) ; make helm play nice
+
 (use-package shackle
   :ensure t
   :config
   (progn (shackle-mode t)
-         (setq shackle-rules '((compilation-mode :align 'bottom :size 0.4))
+         (setq shackle-rules '((compilation-mode :align 'bottom :size 0.4)
+                               ("\\`\\*helm.*?\\*\\'" :regexp t :align t :size 0.4))
                shackle-default-rule '(:select t))))
-
-;;------------------------------------------
-;; Window management
-;;------------------------------------------
-(leader-window-definer
-  :states '(motion visual)
-  "v" 'split-window-right
-  "-" 'split-window-below
-  "l" 'evil-window-right
-  "h" 'evil-window-left
-  "j" 'evil-window-down
-  "k" 'evil-window-up
-  "d" 'evil-window-delete
-  "m" 'delete-other-windows)
 
 ;;------------------------------------------
 ;; Buffers management
@@ -376,6 +377,21 @@ If the universal prefix argument is used then kill also the window."
   (global-hl-todo-mode))
 
 ;;------------------------------------------
+;; Window management
+;;------------------------------------------
+(leader-window-definer
+  :states '(motion visual normal)
+  :keymaps '(magit-mode-map prog-mode-map compilation-mode-map global)
+  "v" 'split-window-right
+  "-" 'split-window-below
+  "l" 'evil-window-right
+  "h" 'evil-window-left
+  "j" 'evil-window-down
+  "k" 'evil-window-up
+  "d" 'evil-window-delete
+  "m" 'delete-other-windows)
+
+;;------------------------------------------
 ;; Treemacs
 ;;------------------------------------------
 (use-package treemacs
@@ -404,24 +420,8 @@ If the universal prefix argument is used then kill also the window."
          (lambda () (require 'ccls) (lsp)))
   :config
   (setq ccls-executable "/usr/local/bin/ccls"))
-
 (use-package cmake-mode :ensure t)
-
 (use-package glsl-mode :ensure t)
-
-;; (defun my-c-mode-common-hook ()
-;;  ;; my customizations for all of c-mode, c++-mode, objc-mode, java-mode
-;;  (c-set-offset 'substatement-open 0)
-;;  ;; other customizations can go here
-
-;;  (setq c++-tab-always-indent t
-;;        c-basic-offset 4
-;;        c-indent-level 4
-;;        tab-stop-list '(4 8 12 16 20 24 28 32 36 40 44 48 52 56 60)
-;;        tab-width 4
-;;        indent-tabs-mode nil  ; use spaces only if nil
-;;        )
-;;  )
 
 (c-add-style "work"
              '("stroustrup"
@@ -489,21 +489,16 @@ If the universal prefix argument is used then kill also the window."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(company-idle-delay 0.3 t)
- '(custom-safe-themes
-   (quote
-    ("8572fed7a217affc4d91c12a808a5228b0858113602dd2e577e0bbd3a4994034" default)))
- '(package-selected-packages (quote (base16-theme evil use-package)))
+ '(company-idle-delay 0.3)
+ '(package-selected-packages
+   '(shackle zenburn-theme yasnippet use-package treemacs-projectile treemacs-evil tao-theme spaceline soothe-theme smooth-scrolling parrot lsp-ui hl-todo helm-projectile grayscale-theme grandshell-theme glsl-mode general fzf flycheck fireplace exec-path-from-shell evil-nerd-commenter evil-magit evil-collection doom-modeline deadgrep darkburn-theme cyberpunk-theme counsel-projectile company-lsp cmake-mode ccls better-defaults base16-theme apropospriate-theme))
  '(safe-local-variable-values
-   (quote
-    ((projectile-project-test-cmd . "cd cpp-lib/build && ./tests")
+   '((projectile-project-test-cmd . "cd cpp-lib/build && ./tests")
      (projectile-project-compilation-cmd . "cmake --build cpp-lib/build")
      (projectile-project-run-cmd . "cd cpp-lib/build && ./main")
-     (projectile-project-compilation-cmd . "cmake --build cpplib/build")
-     (projectile-project-run-cmd . "cd cpplib/build && ./main")
-     (projectile-project-run-cmd . "cd build && ./main")
      (projectile-project-compilation-cmd . "cmake --build build")
-     (projectile-project-run-cmd . "cd build && ./blocks")))))
+     (projectile-project-run-cmd . "cd build && ./blocks")))
+ '(shackle-mode t))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
